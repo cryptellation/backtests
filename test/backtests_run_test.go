@@ -48,7 +48,7 @@ func (r *testRobotRun) OnInit(ctx workflow.Context, params runtime.OnInitCallbac
 func (r *testRobotRun) OnNewPrices(_ workflow.Context, params runtime.OnNewPricesCallbackWorkflowParams) error {
 	checkBacktestRunContext(r.Suite, params.Run, r.BacktestID)
 
-	// TODO: test order passing in OnNewPrices
+	// TODO(#6): test order passing in OnNewPrices
 
 	r.OnNewPricesCalls++
 	return nil
