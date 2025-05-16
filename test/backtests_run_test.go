@@ -31,8 +31,8 @@ type testRobotRun struct {
 }
 
 func (r *testRobotRun) OnInit(ctx workflow.Context, params runtime.OnInitCallbackWorkflowParams) error {
-	checkBacktestRunContext(r.Suite, params.RunCtx, r.BacktestID)
-	r.Suite.Require().WithinDuration(r.BacktestParams.BacktestParameters.StartTime, params.RunCtx.Now, time.Second)
+	checkBacktestRunContext(r.Suite, params.Run, r.BacktestID)
+	r.Suite.Require().WithinDuration(r.BacktestParams.BacktestParameters.StartTime, params.Run.Now, time.Second)
 
 	_, err := r.WfClient.SubscribeToPrice(ctx, api.SubscribeToPriceWorkflowParams{
 		BacktestID: r.BacktestID,
@@ -104,8 +104,8 @@ func (suite *EndToEndSuite) TestBacktestRun() {
 	suite.Require().Equal(1, r.OnExitCalls)
 }
 
-func checkBacktestRunContext(suite *EndToEndSuite, ctx runtime.Context, backtestID uuid.UUID) {
+func checkBacktestRunContext(suite *EndToEndSuite, ctx runtime.Run, backtestID uuid.UUID) {
 	suite.Require().Equal(backtestID, ctx.ID)
 	suite.Require().Equal(runtime.ModeBacktest, ctx.Mode)
-	suite.Require().NotEmpty(ctx.TaskQueue)
+	suite.Require().NotEmpty(ctx.ParentTaskQueue)
 }
