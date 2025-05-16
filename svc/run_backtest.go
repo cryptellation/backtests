@@ -106,11 +106,11 @@ func (wf *workflows) execOnInitBacktestCallback(
 	// Run a new child workflow
 	ctx = workflow.WithChildOptions(ctx, opts)
 	if err := workflow.ExecuteChildWorkflow(ctx, onInitCallback.Name, runtime.OnInitCallbackWorkflowParams{
-		RunCtx: runtime.Context{
-			ID:        backtestID,
-			Mode:      runtime.ModeBacktest,
-			Now:       bt.Parameters.StartTime,
-			TaskQueue: workflow.GetInfo(ctx).TaskQueueName,
+		Run: runtime.Run{
+			ID:              backtestID,
+			Mode:            runtime.ModeBacktest,
+			Now:             bt.Parameters.StartTime,
+			ParentTaskQueue: workflow.GetInfo(ctx).TaskQueueName,
 		},
 	}).Get(ctx, nil); err != nil {
 		return backtest.Backtest{}, fmt.Errorf("starting new onInitCallback child workflow: %w", err)
@@ -230,11 +230,11 @@ func execOnPriceBacktest(
 	err := workflow.ExecuteChildWorkflow(
 		workflow.WithChildOptions(ctx, opts),
 		callback.Name, runtime.OnNewPricesCallbackWorkflowParams{
-			Run: runtime.Context{
-				ID:        backtestID,
-				Mode:      runtime.ModeBacktest,
-				Now:       prices[0].Time,
-				TaskQueue: workflow.GetInfo(ctx).TaskQueueName,
+			Run: runtime.Run{
+				ID:              backtestID,
+				Mode:            runtime.ModeBacktest,
+				Now:             prices[0].Time,
+				ParentTaskQueue: workflow.GetInfo(ctx).TaskQueueName,
 			},
 			Ticks: prices,
 		}).Get(ctx, nil)
@@ -271,11 +271,11 @@ func (wf *workflows) execOnExitBacktestCallback(
 	ctx = workflow.WithChildOptions(ctx, opts)
 	if err := workflow.ExecuteChildWorkflow(
 		ctx, onExitCallback.Name, runtime.OnExitCallbackWorkflowParams{
-			Run: runtime.Context{
-				ID:        backtestID,
-				Mode:      runtime.ModeBacktest,
-				Now:       bt.Parameters.EndTime,
-				TaskQueue: workflow.GetInfo(ctx).TaskQueueName,
+			Run: runtime.Run{
+				ID:              backtestID,
+				Mode:            runtime.ModeBacktest,
+				Now:             bt.Parameters.EndTime,
+				ParentTaskQueue: workflow.GetInfo(ctx).TaskQueueName,
 			},
 		},
 	).Get(ctx, nil); err != nil {
