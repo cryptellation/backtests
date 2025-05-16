@@ -10,7 +10,6 @@ import (
 	"github.com/cryptellation/backtests/api"
 	"github.com/cryptellation/backtests/pkg/backtest"
 	"github.com/cryptellation/runtime/account"
-	"github.com/lerenn/cryptellation/pkg/utils"
 )
 
 func (suite *EndToEndSuite) TestBacktestGet() {
@@ -45,6 +44,8 @@ func (suite *EndToEndSuite) TestBacktestGet() {
 func (suite *EndToEndSuite) TestBacktestList() {
 	// GIVEN 3 backtests
 
+	start, _ := time.Parse(time.RFC3339, "2023-02-26T12:00:00Z")
+	end, _ := time.Parse(time.RFC3339, "2023-02-26T12:02:00Z")
 	params := api.CreateBacktestWorkflowParams{
 		BacktestParameters: backtest.Parameters{
 			Accounts: map[string]account.Account{
@@ -54,8 +55,8 @@ func (suite *EndToEndSuite) TestBacktestList() {
 					},
 				},
 			},
-			StartTime: utils.Must(time.Parse(time.RFC3339, "2023-02-26T12:00:00Z")),
-			EndTime:   utils.ToReference(utils.Must(time.Parse(time.RFC3339, "2023-02-26T12:02:00Z"))),
+			StartTime: start,
+			EndTime:   &end,
 		},
 	}
 	bt1, err := suite.client.NewBacktest(context.Background(), params)
