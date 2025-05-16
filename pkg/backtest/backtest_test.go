@@ -10,7 +10,6 @@ import (
 	"github.com/cryptellation/candlesticks/pkg/candlestick"
 	"github.com/cryptellation/candlesticks/pkg/period"
 	"github.com/cryptellation/runtime/account"
-	"github.com/lerenn/cryptellation/pkg/utils"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -52,6 +51,8 @@ func (suite *BacktestSuite) TestIncrementPriceID() {
 }
 
 func (suite *BacktestSuite) TestBacktestCreateWithModeFullOHLC() {
+	mode := ModeIsCloseOHLC
+	per := period.M1
 	params := Parameters{
 		Accounts: map[string]account.Account{
 			"exchange": {
@@ -62,8 +63,8 @@ func (suite *BacktestSuite) TestBacktestCreateWithModeFullOHLC() {
 		},
 		StartTime:   time.Unix(0, 0).UTC(),
 		EndTime:     nil,
-		Mode:        utils.ToReference(ModeIsFullOHLC),
-		PricePeriod: utils.ToReference(period.M1),
+		Mode:        &mode,
+		PricePeriod: &per,
 	}
 
 	bt, err := New(params)
@@ -73,6 +74,8 @@ func (suite *BacktestSuite) TestBacktestCreateWithModeFullOHLC() {
 }
 
 func (suite *BacktestSuite) TestBacktestCreateWithModeCloseOHLC() {
+	mode := ModeIsCloseOHLC
+	per := period.M1
 	params := Parameters{
 		Accounts: map[string]account.Account{
 			"exchange": {
@@ -83,8 +86,8 @@ func (suite *BacktestSuite) TestBacktestCreateWithModeCloseOHLC() {
 		},
 		StartTime:   time.Unix(0, 0).UTC(),
 		EndTime:     nil,
-		Mode:        utils.ToReference(ModeIsCloseOHLC),
-		PricePeriod: utils.ToReference(period.M1),
+		Mode:        &mode,
+		PricePeriod: &per,
 	}
 
 	bt, err := New(params)

@@ -13,7 +13,6 @@ import (
 	"github.com/cryptellation/runtime"
 	"github.com/cryptellation/runtime/account"
 	"github.com/google/uuid"
-	"github.com/lerenn/cryptellation/pkg/utils"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -65,6 +64,8 @@ func (r *testRobotRun) OnExit(_ workflow.Context, params runtime.OnExitCallbackW
 func (suite *EndToEndSuite) TestBacktestRun() {
 	// WHEN creating a new backtest
 
+	start, _ := time.Parse(time.RFC3339, "2023-02-26T12:00:00Z")
+	end, _ := time.Parse(time.RFC3339, "2023-02-26T12:02:00Z")
 	params := api.CreateBacktestWorkflowParams{
 		BacktestParameters: backtest.Parameters{
 			Accounts: map[string]account.Account{
@@ -74,8 +75,8 @@ func (suite *EndToEndSuite) TestBacktestRun() {
 					},
 				},
 			},
-			StartTime: utils.Must(time.Parse(time.RFC3339, "2023-02-26T12:00:00Z")),
-			EndTime:   utils.ToReference(utils.Must(time.Parse(time.RFC3339, "2023-02-26T12:02:00Z"))),
+			StartTime: start,
+			EndTime:   &end,
 		},
 	}
 	backtest, err := suite.client.NewBacktest(context.Background(), params)
