@@ -69,8 +69,8 @@ func (suite *BacktestSuite) TestBacktestCreateWithModeFullOHLC() {
 
 	bt, err := New(params)
 	suite.Require().NoError(err)
-	suite.Require().Equal(ModeIsFullOHLC, bt.Parameters.Mode)
-	suite.Require().Equal(candlestick.PriceTypeIsOpen, bt.CurrentCandlestick.Price)
+	suite.Require().Equal(ModeIsCloseOHLC, bt.Parameters.Mode)
+	suite.Require().Equal(candlestick.PriceTypeIsClose, bt.CurrentCandlestick.Price)
 }
 
 func (suite *BacktestSuite) TestBacktestCreateWithModeCloseOHLC() {
