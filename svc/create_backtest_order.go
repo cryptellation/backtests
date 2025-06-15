@@ -82,11 +82,11 @@ func (wf *workflows) getBacktestAndCandlestick(
 	}
 
 	// Check if we have a candlestick
-	_, cs, notEmpty := csRes.List.Data.First()
-	if !notEmpty {
+	if len(csRes.List) == 0 {
 		return backtest.Backtest{}, candlestick.Candlestick{},
-			fmt.Errorf("%w: %d candlesticks retrieved", backtest.ErrNoDataForOrderValidation, csRes.List.Data.Len())
+			fmt.Errorf("%w: %d candlesticks retrieved", backtest.ErrNoDataForOrderValidation, len(csRes.List))
 	}
+	cs := csRes.List[0]
 
 	return dbBtRes.Backtest, cs, nil
 }

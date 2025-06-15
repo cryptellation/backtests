@@ -186,10 +186,11 @@ func (wf *workflows) readActualPrices(ctx workflow.Context, bt backtest.Backtest
 		}
 
 		// Get the first candlestick if possible
-		t, cs, exists := result.List.Data.First()
-		if !exists {
+		if len(result.List) == 0 {
 			continue
 		}
+		cs := result.List[0]
+		t := cs.Time
 
 		// Create tick from candlesticks
 		p := tick.FromCandlestick(sub.Exchange, sub.Pair, bt.CurrentCandlestick.Price, t, cs)
