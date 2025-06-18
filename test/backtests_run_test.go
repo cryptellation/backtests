@@ -13,6 +13,7 @@ import (
 	"github.com/cryptellation/runtime"
 	"github.com/cryptellation/runtime/account"
 	"github.com/google/uuid"
+	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -85,7 +86,17 @@ func (suite *EndToEndSuite) TestBacktestRun() {
 
 	suite.Require().NoError(err)
 
-	// WHEN running the backtest with a robot
+	// GIVEN a running temporal worker
+	tq := "backtest-" + backtest.ID.String()
+	w := worker.New(suite.temporalclient, tq, worker.Options{})
+	go func() {
+		if err := w.Run(nil); err != nil {
+			suite.Require().NoError(err)
+		}
+	}()
+	defer w.Stop()
+
+	// WHEN running the backtest with a robot on the worker
 
 	r := &testRobotRun{
 		BacktestParams: params,
@@ -93,7 +104,11 @@ func (suite *EndToEndSuite) TestBacktestRun() {
 		Suite:          suite,
 		WfClient:       clients.NewWfClient(),
 	}
-	err = backtest.Run(context.Background(), r)
+	err = backtest.Run(context.Background(), clients.RunParams{
+		Bot:       r,
+		Worker:    w,
+		TaskQueue: tq,
+	})
 
 	// THEN no error is returned
 

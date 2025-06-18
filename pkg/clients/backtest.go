@@ -2,10 +2,8 @@ package clients
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/cryptellation/backtests/api"
-	"github.com/cryptellation/runtime"
 	"github.com/cryptellation/runtime/bot"
 	"github.com/google/uuid"
 	"go.temporal.io/sdk/worker"
@@ -17,28 +15,18 @@ type Backtest struct {
 	client client
 }
 
+// RunParams contains parameters for running a backtest.
+type RunParams struct {
+	Bot       bot.Bot
+	Worker    worker.Worker
+	TaskQueue string
+}
+
 // Run starts the backtest on Cryptellation API.
-func (bt *Backtest) Run(ctx context.Context, b bot.Bot) error {
-	// TODO(#4): get worker from parameters instead of creating a new one
-
-	// Create temporary worker
-	tq := fmt.Sprintf("%s-%s", runtime.ModeBacktest.String(), bt.ID.String())
-	w := worker.New(bt.client.temporal, tq, worker.Options{})
-
-	// Register workflows
-	cbs := bot.RegisterWorkflows(w, tq, bt.ID, b)
-
-	// Start worker
-	go func() {
-		if err := w.Run(nil); err != nil {
-			panic(err)
-		}
-	}()
-	defer w.Stop()
-
+func (bt *Backtest) Run(ctx context.Context, params RunParams) error {
 	_, err := bt.client.raw.RunBacktest(ctx, api.RunBacktestWorkflowParams{
 		BacktestID: bt.ID,
-		Callbacks:  cbs,
+		Callbacks:  bot.RegisterWorkflows(params.Worker, params.TaskQueue, bt.ID, params.Bot),
 	})
 	return err
 }
