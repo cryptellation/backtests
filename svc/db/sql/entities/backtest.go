@@ -8,6 +8,7 @@ import (
 	"github.com/cryptellation/backtests/pkg/backtest"
 	"github.com/cryptellation/candlesticks/pkg/candlestick"
 	"github.com/cryptellation/candlesticks/pkg/period"
+	"github.com/cryptellation/runtime"
 	"github.com/google/uuid"
 )
 
@@ -21,12 +22,16 @@ type Parameters struct {
 
 // BacktestData is the entity for the backtest data.
 type BacktestData struct {
-	Parameters        Parameters         `json:"parameters"`
+	StartTime         time.Time          `json:"start_time"`
+	EndTime           time.Time          `json:"end_time"`
+	Mode              string             `json:"mode"`
+	PricePeriod       string             `json:"price_period"`
 	CurrentTime       time.Time          `json:"current_time"`
 	CurrentPriceType  string             `json:"current_price_type"`
 	Balances          []Balance          `json:"balances"`
 	Orders            []Order            `json:"orders"`
 	TickSubscriptions []TickSubscription `json:"tick_subscriptions"`
+	Callbacks         runtime.Callbacks  `json:"callbacks"`
 }
 
 // Backtest is the entity for a backtest.
@@ -49,12 +54,12 @@ func (bt Backtest) ToModel() (backtest.Backtest, error) {
 		return backtest.Backtest{}, wrappedErr
 	}
 
-	periodBetweenEvents := period.Symbol(data.Parameters.PricePeriod)
+	periodBetweenEvents := period.Symbol(data.PricePeriod)
 	if err := periodBetweenEvents.Validate(); err != nil {
 		return backtest.Backtest{}, err
 	}
 
-	mode := backtest.Mode(data.Parameters.Mode)
+	mode := backtest.Mode(data.Mode)
 	if err := mode.Validate(); err != nil {
 		return backtest.Backtest{}, err
 	}
@@ -70,13 +75,11 @@ func (bt Backtest) ToModel() (backtest.Backtest, error) {
 	}
 
 	return backtest.Backtest{
-		ID: id,
-		Parameters: backtest.Settings{
-			StartTime:   data.Parameters.StartTime,
-			EndTime:     data.Parameters.EndTime,
-			Mode:        mode,
-			PricePeriod: periodBetweenEvents,
-		},
+		ID:          id,
+		StartTime:   data.StartTime,
+		EndTime:     data.EndTime,
+		Mode:        mode,
+		PricePeriod: periodBetweenEvents,
 		CurrentCandlestick: backtest.CurrentCandlestick{
 			Time:  data.CurrentTime,
 			Price: priceType,
@@ -84,6 +87,7 @@ func (bt Backtest) ToModel() (backtest.Backtest, error) {
 		Accounts:            ToAccountModels(data.Balances),
 		Orders:              orders,
 		PricesSubscriptions: ToTickSubscriptionModels(data.TickSubscriptions),
+		Callbacks:           data.Callbacks,
 	}, nil
 }
 
@@ -91,17 +95,16 @@ func (bt Backtest) ToModel() (backtest.Backtest, error) {
 func FromBacktestModel(bt backtest.Backtest) (Backtest, error) {
 	// Create the backtest data.
 	data := BacktestData{
-		Parameters: Parameters{
-			StartTime:   bt.Parameters.StartTime,
-			EndTime:     bt.Parameters.EndTime,
-			Mode:        bt.Parameters.Mode.String(),
-			PricePeriod: bt.Parameters.PricePeriod.String(),
-		},
+		StartTime:         bt.StartTime,
+		EndTime:           bt.EndTime,
+		Mode:              bt.Mode.String(),
+		PricePeriod:       bt.PricePeriod.String(),
 		CurrentTime:       bt.CurrentCandlestick.Time,
 		CurrentPriceType:  bt.CurrentCandlestick.Price.String(),
 		Balances:          FromAccountModels(bt.Accounts),
 		Orders:            FromOrderModels(bt.Orders),
 		TickSubscriptions: FromTickSubscriptionModels(bt.PricesSubscriptions),
+		Callbacks:         bt.Callbacks,
 	}
 
 	// Marshal the backtest data.

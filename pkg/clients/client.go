@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/cryptellation/backtests/api"
+	"github.com/cryptellation/backtests/pkg/backtest"
+	"github.com/cryptellation/runtime"
 	temporalclient "go.temporal.io/sdk/client"
 )
 
@@ -12,7 +14,8 @@ type Client interface {
 	// NewBacktest creates a new backtest.
 	NewBacktest(
 		ctx context.Context,
-		params api.CreateBacktestWorkflowParams,
+		params backtest.Parameters,
+		callbacks runtime.Callbacks,
 	) (Backtest, error)
 	// GetBacktest gets a backtest.
 	GetBacktest(
@@ -44,9 +47,16 @@ func New(cl temporalclient.Client) Client {
 // NewBacktest creates a new backtest.
 func (c client) NewBacktest(
 	ctx context.Context,
-	params api.CreateBacktestWorkflowParams,
+	params backtest.Parameters,
+	callbacks runtime.Callbacks,
 ) (Backtest, error) {
-	res, err := c.raw.CreateBacktest(ctx, params)
+	// Create backtest and register workflows
+	res, err := c.raw.CreateBacktest(ctx, api.CreateBacktestWorkflowParams{
+		BacktestParameters: params,
+		Callbacks:          callbacks,
+	})
+
+	// Return backtest
 	return Backtest{
 		ID:     res.ID,
 		client: c,

@@ -18,19 +18,25 @@ func (wf *workflows) RunBacktestWorkflow(
 	ctx workflow.Context,
 	params api.RunBacktestWorkflowParams,
 ) (api.RunBacktestWorkflowResults, error) {
+	// Load backtest from database to get callbacks
+	bt, err := wf.readBacktestFromDB(ctx, params.BacktestID)
+	if err != nil {
+		return api.RunBacktestWorkflowResults{}, fmt.Errorf("loading backtest from database: %w", err)
+	}
+
 	// Init the backtest from client side
-	bt, err := wf.execOnInitBacktestCallback(ctx, params.Callbacks.OnInitCallback, params.BacktestID)
+	bt, err = wf.execOnInitBacktestCallback(ctx, bt.Callbacks.OnInitCallback, params.BacktestID)
 	if err != nil {
 		return api.RunBacktestWorkflowResults{}, fmt.Errorf("initializing backtest from client side: %w", err)
 	}
 
 	// Loop on backtest events
-	if err := wf.loopThroughBacktestEvents(ctx, bt, params.Callbacks); err != nil {
+	if err := wf.loopThroughBacktestEvents(ctx, bt, bt.Callbacks); err != nil {
 		return api.RunBacktestWorkflowResults{}, fmt.Errorf("looping through backtest events: %w", err)
 	}
 
 	// Exit the backtest from client side
-	if err := wf.execOnExitBacktestCallback(ctx, params.Callbacks.OnExitCallback, bt.ID); err != nil {
+	if err := wf.execOnExitBacktestCallback(ctx, bt.Callbacks.OnExitCallback, bt.ID); err != nil {
 		return api.RunBacktestWorkflowResults{}, fmt.Errorf("exit backtest from client side: %w", err)
 	}
 
@@ -57,7 +63,7 @@ func (wf *workflows) loopThroughBacktestEvents(
 		if len(prices) == 0 {
 			logger.Warn("No price detected",
 				"time", bt.CurrentCandlestick.Time)
-			bt.SetCurrentTime(bt.Parameters.EndTime)
+			bt.SetCurrentTime(bt.EndTime)
 			break
 		} else if !prices[0].Time.Equal(bt.CurrentCandlestick.Time) {
 			logger.Warn("No price between current time and first event retrieved",
@@ -94,6 +100,7 @@ func (wf *workflows) execOnInitBacktestCallback(
 
 	// Options
 	opts := workflow.ChildWorkflowOptions{
+		WorkflowID:               fmt.Sprintf("backtest-%s-on-init", backtestID.String()),
 		TaskQueue:                onInitCallback.TaskQueueName, // Execute in the client queue
 		WorkflowExecutionTimeout: time.Second * 30,             // Timeout if the child workflow does not complete
 	}
@@ -106,10 +113,10 @@ func (wf *workflows) execOnInitBacktestCallback(
 	// Run a new child workflow
 	ctx = workflow.WithChildOptions(ctx, opts)
 	if err := workflow.ExecuteChildWorkflow(ctx, onInitCallback.Name, runtime.OnInitCallbackWorkflowParams{
-		Run: runtime.Run{
+		Context: runtime.Context{
 			ID:              backtestID,
 			Mode:            runtime.ModeBacktest,
-			Now:             bt.Parameters.StartTime,
+			Now:             bt.StartTime,
 			ParentTaskQueue: workflow.GetInfo(ctx).TaskQueueName,
 		},
 	}).Get(ctx, nil); err != nil {
@@ -174,9 +181,9 @@ func (wf *workflows) readActualPrices(ctx workflow.Context, bt backtest.Backtest
 		result, err := wf.cryptellation.ListCandlesticks(ctx, candlesticksapi.ListCandlesticksWorkflowParams{
 			Exchange: sub.Exchange,
 			Pair:     sub.Pair,
-			Period:   bt.Parameters.PricePeriod,
+			Period:   bt.PricePeriod,
 			Start:    &bt.CurrentCandlestick.Time,
-			End:      &bt.Parameters.EndTime,
+			End:      &bt.EndTime,
 			Limit:    1,
 		}, &workflow.ChildWorkflowOptions{
 			TaskQueue: candlesticksapi.WorkerTaskQueueName,
@@ -198,7 +205,7 @@ func (wf *workflows) readActualPrices(ctx workflow.Context, bt backtest.Backtest
 	}
 
 	// Only keep the earliest same time ticks for time consistency
-	_, prices = tick.OnlyKeepEarliestSameTime(prices, bt.Parameters.EndTime)
+	_, prices = tick.OnlyKeepEarliestSameTime(prices, bt.EndTime)
 	logger.Info("Gotten ticks on backtest",
 		"quantity", len(prices),
 		"backtest_id", bt.ID.String())
@@ -218,6 +225,8 @@ func execOnPriceBacktest(
 
 	// Options
 	opts := workflow.ChildWorkflowOptions{
+		WorkflowID: fmt.Sprintf("backtest-%s-on-new-prices-%s",
+			backtestID.String(), prices[0].Time.Format(time.RFC3339)),
 		TaskQueue:                callback.TaskQueueName, // Execute in the client queue
 		WorkflowExecutionTimeout: time.Second * 30,       // Timeout if the child workflow does not complete
 	}
@@ -231,7 +240,7 @@ func execOnPriceBacktest(
 	err := workflow.ExecuteChildWorkflow(
 		workflow.WithChildOptions(ctx, opts),
 		callback.Name, runtime.OnNewPricesCallbackWorkflowParams{
-			Run: runtime.Run{
+			Context: runtime.Context{
 				ID:              backtestID,
 				Mode:            runtime.ModeBacktest,
 				Now:             prices[0].Time,
@@ -259,6 +268,7 @@ func (wf *workflows) execOnExitBacktestCallback(
 
 	// Options
 	opts := workflow.ChildWorkflowOptions{
+		WorkflowID:               fmt.Sprintf("backtest-%s-on-exit", backtestID.String()),
 		TaskQueue:                onExitCallback.TaskQueueName, // Execute in the client queue
 		WorkflowExecutionTimeout: time.Second * 30,             // Timeout if the child workflow does not complete
 	}
@@ -272,10 +282,10 @@ func (wf *workflows) execOnExitBacktestCallback(
 	ctx = workflow.WithChildOptions(ctx, opts)
 	if err := workflow.ExecuteChildWorkflow(
 		ctx, onExitCallback.Name, runtime.OnExitCallbackWorkflowParams{
-			Run: runtime.Run{
+			Context: runtime.Context{
 				ID:              backtestID,
 				Mode:            runtime.ModeBacktest,
-				Now:             bt.Parameters.EndTime,
+				Now:             bt.EndTime,
 				ParentTaskQueue: workflow.GetInfo(ctx).TaskQueueName,
 			},
 		},

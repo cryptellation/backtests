@@ -17,77 +17,59 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-type testRobotRun struct {
+type testRunner struct {
 	Suite *EndToEndSuite
 
-	BacktestID     uuid.UUID
-	BacktestParams api.CreateBacktestWorkflowParams
+	BacktestID uuid.UUID
+	Params     backtest.Parameters
 
 	WfClient clients.WfClient
 
-	OnInitCalls      int
-	OnNewPricesCalls int
-	OnExitCalls      int
+	OnInitCallsCount      int
+	OnNewPricesCallsCount int
+	OnExitCallsCount      int
 }
 
-func (r *testRobotRun) OnInit(ctx workflow.Context, params runtime.OnInitCallbackWorkflowParams) error {
-	checkBacktestRunContext(r.Suite, params.Run, r.BacktestID)
-	r.Suite.Require().WithinDuration(r.BacktestParams.BacktestParameters.StartTime, params.Run.Now, time.Second)
+func (r *testRunner) Name() string {
+	return "BacktestE2eRunner"
+}
+
+func (r *testRunner) OnInit(ctx workflow.Context, params runtime.OnInitCallbackWorkflowParams) error {
+	checkBacktestRunContext(r.Suite, params.Context, r.BacktestID)
+	r.Suite.Require().WithinDuration(r.Params.StartTime, params.Context.Now, time.Second)
 
 	_, err := r.WfClient.SubscribeToPrice(ctx, api.SubscribeToPriceWorkflowParams{
-		BacktestID: r.BacktestID,
+		BacktestID: params.Context.ID,
 		Exchange:   "binance",
 		Pair:       "BTC-USDT",
 	})
 	r.Suite.Require().NoError(err)
 
-	r.OnInitCalls++
+	r.OnInitCallsCount++
 	return err
 }
 
-func (r *testRobotRun) OnNewPrices(_ workflow.Context, params runtime.OnNewPricesCallbackWorkflowParams) error {
-	checkBacktestRunContext(r.Suite, params.Run, r.BacktestID)
+func (r *testRunner) OnNewPrices(_ workflow.Context, params runtime.OnNewPricesCallbackWorkflowParams) error {
+	checkBacktestRunContext(r.Suite, params.Context, r.BacktestID)
 
 	// TODO(#6): test order passing in OnNewPrices
 
-	r.OnNewPricesCalls++
+	r.OnNewPricesCallsCount++
 	return nil
 }
 
-func (r *testRobotRun) OnExit(_ workflow.Context, params runtime.OnExitCallbackWorkflowParams) error {
-	checkBacktestRunContext(r.Suite, params.Run, r.BacktestID)
-	r.Suite.Require().WithinDuration(*r.BacktestParams.BacktestParameters.EndTime, params.Run.Now, time.Second)
+func (r *testRunner) OnExit(_ workflow.Context, params runtime.OnExitCallbackWorkflowParams) error {
+	checkBacktestRunContext(r.Suite, params.Context, r.BacktestID)
+	r.Suite.Require().WithinDuration(*r.Params.EndTime, params.Context.Now, time.Second)
 
-	r.OnExitCalls++
+	r.OnExitCallsCount++
 	return nil
 }
 
 func (suite *EndToEndSuite) TestBacktestRun() {
-	// WHEN creating a new backtest
-
-	start, _ := time.Parse(time.RFC3339, "2023-02-26T12:00:00Z")
-	end, _ := time.Parse(time.RFC3339, "2023-02-26T12:02:00Z")
-	params := api.CreateBacktestWorkflowParams{
-		BacktestParameters: backtest.Parameters{
-			Accounts: map[string]account.Account{
-				"binance": {
-					Balances: map[string]float64{
-						"BTC": 1,
-					},
-				},
-			},
-			StartTime: start,
-			EndTime:   &end,
-		},
-	}
-	backtest, err := suite.client.NewBacktest(context.Background(), params)
-
-	// THEN no error is returned
-
-	suite.Require().NoError(err)
-
 	// GIVEN a running temporal worker
-	tq := "backtest-" + backtest.ID.String()
+
+	tq := "backtest-e2e-" + uuid.New().String()
 	w := worker.New(suite.temporalclient, tq, worker.Options{})
 	go func() {
 		if err := w.Run(nil); err != nil {
@@ -96,31 +78,52 @@ func (suite *EndToEndSuite) TestBacktestRun() {
 	}()
 	defer w.Stop()
 
-	// WHEN running the backtest with a robot on the worker
+	// AND a registered runnable
 
-	r := &testRobotRun{
-		BacktestParams: params,
-		BacktestID:     backtest.ID,
-		Suite:          suite,
-		WfClient:       clients.NewWfClient(),
+	start, _ := time.Parse(time.RFC3339, "2023-02-26T12:00:00Z")
+	end, _ := time.Parse(time.RFC3339, "2023-02-26T12:02:00Z")
+	params := backtest.Parameters{
+		Accounts: map[string]account.Account{
+			"binance": {
+				Balances: map[string]float64{
+					"BTC": 1,
+				},
+			},
+		},
+		StartTime: start,
+		EndTime:   &end,
 	}
-	err = backtest.Run(context.Background(), clients.RunParams{
-		Bot:       r,
-		Worker:    w,
-		TaskQueue: tq,
-	})
+	r := &testRunner{
+		Params:   params,
+		Suite:    suite,
+		WfClient: clients.NewWfClient(),
+	}
+	callbacks := runtime.RegisterRunnable(w, tq, r)
+
+	// WHEN creating a new backtest
+
+	backtest, err := suite.client.NewBacktest(context.Background(), params, callbacks)
 
 	// THEN no error is returned
 
 	suite.Require().NoError(err)
 
-	// AND the robot callbacks are called
-	suite.Require().Equal(1, r.OnInitCalls)
-	suite.Require().Equal(2, r.OnNewPricesCalls)
-	suite.Require().Equal(1, r.OnExitCalls)
+	// WHEN running the backtest with a runner on the worker
+
+	r.BacktestID = backtest.ID // Add backtest ID to runner for checking backtest run context
+	err = backtest.Run(context.Background())
+
+	// THEN no error is returned
+
+	suite.Require().NoError(err)
+
+	// AND the runner callbacks are called
+	suite.Require().Equal(1, r.OnInitCallsCount)
+	suite.Require().Equal(2, r.OnNewPricesCallsCount)
+	suite.Require().Equal(1, r.OnExitCallsCount)
 }
 
-func checkBacktestRunContext(suite *EndToEndSuite, ctx runtime.Run, backtestID uuid.UUID) {
+func checkBacktestRunContext(suite *EndToEndSuite, ctx runtime.Context, backtestID uuid.UUID) {
 	suite.Require().Equal(backtestID, ctx.ID)
 	suite.Require().Equal(runtime.ModeBacktest, ctx.Mode)
 	suite.Require().NotEmpty(ctx.ParentTaskQueue)

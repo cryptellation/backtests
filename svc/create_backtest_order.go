@@ -33,6 +33,11 @@ func (wf *workflows) CreateBacktestOrderWorkflow(
 		return api.CreateBacktestOrderWorkflowResults{}, fmt.Errorf("could not read backtest and candlesticks: %w", err)
 	}
 
+	// Check if the backtest is done
+	if bt.Done() {
+		return api.CreateBacktestOrderWorkflowResults{}, fmt.Errorf("backtest is done")
+	}
+
 	// Add order to backtest
 	logger.Info("Adding order to backtest",
 		"order", params.Order,
@@ -71,7 +76,7 @@ func (wf *workflows) getBacktestAndCandlestick(
 	csRes, err := wf.cryptellation.ListCandlesticks(ctx, candlesticksapi.ListCandlesticksWorkflowParams{
 		Exchange: params.Order.Exchange,
 		Pair:     params.Order.Pair,
-		Period:   dbBtRes.Backtest.Parameters.PricePeriod,
+		Period:   dbBtRes.Backtest.PricePeriod,
 		Start:    &dbBtRes.Backtest.CurrentCandlestick.Time,
 		End:      &dbBtRes.Backtest.CurrentCandlestick.Time,
 		Limit:    0,

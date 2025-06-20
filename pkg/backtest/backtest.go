@@ -8,6 +8,7 @@ import (
 
 	"github.com/cryptellation/candlesticks/pkg/candlestick"
 	"github.com/cryptellation/candlesticks/pkg/period"
+	"github.com/cryptellation/runtime"
 	"github.com/cryptellation/runtime/account"
 	"github.com/cryptellation/runtime/order"
 	"github.com/cryptellation/ticks/pkg/tick"
@@ -33,22 +34,18 @@ type CurrentCandlestick struct {
 	Price candlestick.PriceType
 }
 
-// Settings is the struct for the backtest settings.
-type Settings struct {
-	StartTime   time.Time     `json:"start_time"`
-	EndTime     time.Time     `json:"end_time"`
-	Mode        Mode          `json:"mode"`
-	PricePeriod period.Symbol `json:"price_period"`
-}
-
 // Backtest is the struct for a backtest.
 type Backtest struct {
 	ID                  uuid.UUID                  `json:"id"`
-	Parameters          Settings                   `json:"settings"`
+	StartTime           time.Time                  `json:"start_time"`
+	EndTime             time.Time                  `json:"end_time"`
+	Mode                Mode                       `json:"mode"`
+	PricePeriod         period.Symbol              `json:"price_period"`
 	CurrentCandlestick  CurrentCandlestick         `json:"current_candlestick"`
 	Accounts            map[string]account.Account `json:"accounts"`
 	PricesSubscriptions []tick.Subscription        `json:"tick_subscriptions"`
 	Orders              []order.Order              `json:"orders"`
+	Callbacks           runtime.Callbacks          `json:"callbacks"`
 }
 
 // Parameters is the struct for the backtest parameters.
@@ -111,7 +108,7 @@ func defaultEndTime() *time.Time {
 }
 
 // New creates a new backtest.
-func New(params Parameters) (Backtest, error) {
+func New(params Parameters, callbacks runtime.Callbacks) (Backtest, error) {
 	// Set default fields params and validate it
 	if err := params.EmptyFieldsToDefault().Validate(); err != nil {
 		return Backtest{}, err
@@ -129,17 +126,16 @@ func New(params Parameters) (Backtest, error) {
 	}
 
 	return Backtest{
-		ID: uuid.New(),
-		Parameters: Settings{
-			StartTime:   params.StartTime,
-			EndTime:     *params.EndTime,
-			Mode:        *params.Mode,
-			PricePeriod: *params.PricePeriod,
-		},
+		ID:                  uuid.New(),
+		StartTime:           params.StartTime,
+		EndTime:             *params.EndTime,
+		Mode:                *params.Mode,
+		PricePeriod:         *params.PricePeriod,
 		CurrentCandlestick:  cc,
 		Accounts:            params.Accounts,
 		PricesSubscriptions: make([]tick.Subscription, 0),
 		Orders:              make([]order.Order, 0),
+		Callbacks:           callbacks,
 	}, nil
 }
 
@@ -160,20 +156,20 @@ func (bt *Backtest) UnmarshalBinary(data []byte) error {
 
 // Advance advances the backtest to the next candlestick.
 func (bt *Backtest) Advance() (done bool, err error) {
-	switch bt.Parameters.Mode {
+	switch bt.Mode {
 	case ModeIsCloseOHLC:
 		bt.advanceWithModeIsCloseOHLC()
 	case ModeIsFullOHLC:
 		bt.advanceWithModeIsFullOHLC()
 	default:
-		return false, fmt.Errorf("error with backtest mode %q: %w", bt.Parameters.Mode, ErrInvalidMode)
+		return false, fmt.Errorf("error with backtest mode %q: %w", bt.Mode, ErrInvalidMode)
 	}
 
 	return bt.Done(), nil
 }
 
 func (bt *Backtest) advanceWithModeIsCloseOHLC() {
-	bt.SetCurrentTime(bt.CurrentCandlestick.Time.Add(bt.Parameters.PricePeriod.Duration()))
+	bt.CurrentCandlestick.Time = bt.CurrentCandlestick.Time.Add(bt.PricePeriod.Duration())
 }
 
 func (bt *Backtest) advanceWithModeIsFullOHLC() {
@@ -185,7 +181,7 @@ func (bt *Backtest) advanceWithModeIsFullOHLC() {
 	case candlestick.PriceTypeIsLow:
 		bt.CurrentCandlestick.Price = candlestick.PriceTypeIsClose
 	case candlestick.PriceTypeIsClose:
-		bt.SetCurrentTime(bt.CurrentCandlestick.Time.Add(bt.Parameters.PricePeriod.Duration()))
+		bt.CurrentCandlestick.Time = bt.CurrentCandlestick.Time.Add(bt.PricePeriod.Duration())
 	default:
 		bt.CurrentCandlestick.Price = candlestick.PriceTypeIsOpen
 	}
@@ -193,7 +189,7 @@ func (bt *Backtest) advanceWithModeIsFullOHLC() {
 
 // Done returns true if the backtest is done.
 func (bt Backtest) Done() bool {
-	return !bt.CurrentCandlestick.Time.Before(bt.Parameters.EndTime)
+	return !bt.CurrentCandlestick.Time.Before(bt.EndTime)
 }
 
 // SetCurrentTime sets the current time of the backtest.
@@ -202,7 +198,7 @@ func (bt *Backtest) SetCurrentTime(ts time.Time) {
 	bt.CurrentCandlestick.Time = ts
 
 	// Starting the time on open if mode is full OHLC
-	if bt.Parameters.Mode == ModeIsFullOHLC {
+	if bt.Mode == ModeIsFullOHLC {
 		bt.CurrentCandlestick.Price = candlestick.PriceTypeIsOpen
 	}
 }

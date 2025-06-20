@@ -9,24 +9,38 @@ import (
 
 	"github.com/cryptellation/backtests/api"
 	"github.com/cryptellation/backtests/pkg/backtest"
+	"github.com/cryptellation/runtime"
 	"github.com/cryptellation/runtime/account"
 )
+
+var dummyCallbacks = runtime.Callbacks{
+	OnInitCallback: runtime.CallbackWorkflow{
+		Name:          "OnInitCallback",
+		TaskQueueName: "TaskQueue",
+	},
+	OnNewPricesCallback: runtime.CallbackWorkflow{
+		Name:          "OnNewPricesCallback",
+		TaskQueueName: "TaskQueue",
+	},
+	OnExitCallback: runtime.CallbackWorkflow{
+		Name:          "OnExitCallback",
+		TaskQueueName: "TaskQueue",
+	},
+}
 
 func (suite *EndToEndSuite) TestBacktestGet() {
 	// GIVEN a backtest
 
-	params := api.CreateBacktestWorkflowParams{
-		BacktestParameters: backtest.Parameters{
-			Accounts: map[string]account.Account{
-				"binance": {
-					Balances: map[string]float64{
-						"BTC": 1,
-					},
+	params := backtest.Parameters{
+		Accounts: map[string]account.Account{
+			"binance": {
+				Balances: map[string]float64{
+					"BTC": 1,
 				},
 			},
 		},
 	}
-	bt, err := suite.client.NewBacktest(context.Background(), params)
+	bt, err := suite.client.NewBacktest(context.Background(), params, dummyCallbacks)
 	suite.Require().NoError(err)
 
 	// WHEN getting the backtest
@@ -46,24 +60,22 @@ func (suite *EndToEndSuite) TestBacktestList() {
 
 	start, _ := time.Parse(time.RFC3339, "2023-02-26T12:00:00Z")
 	end, _ := time.Parse(time.RFC3339, "2023-02-26T12:02:00Z")
-	params := api.CreateBacktestWorkflowParams{
-		BacktestParameters: backtest.Parameters{
-			Accounts: map[string]account.Account{
-				"binance": {
-					Balances: map[string]float64{
-						"BTC": 1,
-					},
+	params := backtest.Parameters{
+		Accounts: map[string]account.Account{
+			"binance": {
+				Balances: map[string]float64{
+					"BTC": 1,
 				},
 			},
-			StartTime: start,
-			EndTime:   &end,
 		},
+		StartTime: start,
+		EndTime:   &end,
 	}
-	bt1, err := suite.client.NewBacktest(context.Background(), params)
+	bt1, err := suite.client.NewBacktest(context.Background(), params, dummyCallbacks)
 	suite.Require().NoError(err)
-	bt2, err := suite.client.NewBacktest(context.Background(), params)
+	bt2, err := suite.client.NewBacktest(context.Background(), params, dummyCallbacks)
 	suite.Require().NoError(err)
-	bt3, err := suite.client.NewBacktest(context.Background(), params)
+	bt3, err := suite.client.NewBacktest(context.Background(), params, dummyCallbacks)
 	suite.Require().NoError(err)
 
 	// WHEN listing backtests
