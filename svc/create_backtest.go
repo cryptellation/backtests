@@ -14,8 +14,13 @@ func (wf *workflows) CreateBacktestWorkflow(
 	ctx workflow.Context,
 	params api.CreateBacktestWorkflowParams,
 ) (api.CreateBacktestWorkflowResults, error) {
+	// Validate callbacks
+	if err := params.Callbacks.Validate(); err != nil {
+		return api.CreateBacktestWorkflowResults{}, fmt.Errorf("validating callbacks: %w", err)
+	}
+
 	// Create backtest
-	bt, err := backtest.New(params.BacktestParameters)
+	bt, err := backtest.New(params.BacktestParameters, params.Callbacks)
 	if err != nil {
 		return api.CreateBacktestWorkflowResults{}, fmt.Errorf("creating a new backtest from request: %w", err)
 	}

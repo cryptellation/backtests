@@ -20,6 +20,7 @@ type (
 	// CreateBacktestWorkflowParams is the parameters of the CreateBacktestWorkflow workflow.
 	CreateBacktestWorkflowParams struct {
 		BacktestParameters backtest.Parameters
+		Callbacks          runtime.Callbacks
 	}
 
 	// CreateBacktestWorkflowResults is the results of the CreateBacktestWorkflow workflow.
@@ -35,7 +36,6 @@ type (
 	// RunBacktestWorkflowParams is the parameters of the RunBacktestWorkflow workflow.
 	RunBacktestWorkflowParams struct {
 		BacktestID uuid.UUID
-		Callbacks  runtime.Callbacks
 	}
 
 	// RunBacktestWorkflowResults is the results of the RunBacktestWorkflow workflow.

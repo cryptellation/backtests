@@ -9,6 +9,7 @@ import (
 
 	"github.com/cryptellation/candlesticks/pkg/candlestick"
 	"github.com/cryptellation/candlesticks/pkg/period"
+	"github.com/cryptellation/runtime"
 	"github.com/cryptellation/runtime/account"
 	"github.com/stretchr/testify/suite"
 )
@@ -23,10 +24,8 @@ type BacktestSuite struct {
 
 func (suite *BacktestSuite) TestMarshalUnMarshalBinary() {
 	bt := Backtest{
-		Parameters: Settings{
-			StartTime: time.Unix(0, 0).UTC(),
-			EndTime:   time.Unix(200, 0).UTC(),
-		},
+		StartTime: time.Unix(0, 0).UTC(),
+		EndTime:   time.Unix(200, 0).UTC(),
 		CurrentCandlestick: CurrentCandlestick{
 			Time: time.Unix(100, 0).UTC(),
 		},
@@ -67,9 +66,9 @@ func (suite *BacktestSuite) TestBacktestCreateWithModeFullOHLC() {
 		PricePeriod: &per,
 	}
 
-	bt, err := New(params)
+	bt, err := New(params, runtime.Callbacks{})
 	suite.Require().NoError(err)
-	suite.Require().Equal(ModeIsCloseOHLC, bt.Parameters.Mode)
+	suite.Require().Equal(ModeIsCloseOHLC, bt.Mode)
 	suite.Require().Equal(candlestick.PriceTypeIsClose, bt.CurrentCandlestick.Price)
 }
 
@@ -90,19 +89,17 @@ func (suite *BacktestSuite) TestBacktestCreateWithModeCloseOHLC() {
 		PricePeriod: &per,
 	}
 
-	bt, err := New(params)
+	bt, err := New(params, runtime.Callbacks{})
 	suite.Require().NoError(err)
-	suite.Require().Equal(ModeIsCloseOHLC, bt.Parameters.Mode)
+	suite.Require().Equal(ModeIsCloseOHLC, bt.Mode)
 	suite.Require().Equal(candlestick.PriceTypeIsClose, bt.CurrentCandlestick.Price)
 }
 
 func (suite *BacktestSuite) TestBacktestSetNewTimeWithFullOHLCMode() {
 	bt := Backtest{
-		Parameters: Settings{
-			StartTime: time.Unix(0, 0).UTC(),
-			EndTime:   time.Unix(200, 0).UTC(),
-			Mode:      ModeIsFullOHLC,
-		},
+		StartTime: time.Unix(0, 0).UTC(),
+		EndTime:   time.Unix(200, 0).UTC(),
+		Mode:      ModeIsFullOHLC,
 		CurrentCandlestick: CurrentCandlestick{
 			Time:  time.Unix(100, 0).UTC(),
 			Price: candlestick.PriceTypeIsClose,
@@ -116,11 +113,9 @@ func (suite *BacktestSuite) TestBacktestSetNewTimeWithFullOHLCMode() {
 
 func (suite *BacktestSuite) TestBacktestSetNewTimeWithCloseOHLCMode() {
 	bt := Backtest{
-		Parameters: Settings{
-			StartTime: time.Unix(0, 0).UTC(),
-			EndTime:   time.Unix(200, 0).UTC(),
-			Mode:      ModeIsCloseOHLC,
-		},
+		StartTime: time.Unix(0, 0).UTC(),
+		EndTime:   time.Unix(200, 0).UTC(),
+		Mode:      ModeIsCloseOHLC,
 		CurrentCandlestick: CurrentCandlestick{
 			Time:  time.Unix(100, 0).UTC(),
 			Price: candlestick.PriceTypeIsClose,
