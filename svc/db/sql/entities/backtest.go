@@ -8,7 +8,6 @@ import (
 	"github.com/cryptellation/backtests/pkg/backtest"
 	"github.com/cryptellation/candlesticks/pkg/candlestick"
 	"github.com/cryptellation/candlesticks/pkg/period"
-	"github.com/cryptellation/runtime"
 	"github.com/google/uuid"
 )
 
@@ -31,7 +30,7 @@ type BacktestData struct {
 	Balances          []Balance          `json:"balances"`
 	Orders            []Order            `json:"orders"`
 	TickSubscriptions []TickSubscription `json:"tick_subscriptions"`
-	Callbacks         runtime.Callbacks  `json:"callbacks"`
+	Callbacks         Callbacks          `json:"callbacks"`
 }
 
 // Backtest is the entity for a backtest.
@@ -87,7 +86,7 @@ func (bt Backtest) ToModel() (backtest.Backtest, error) {
 		Accounts:            ToAccountModels(data.Balances),
 		Orders:              orders,
 		PricesSubscriptions: ToTickSubscriptionModels(data.TickSubscriptions),
-		Callbacks:           data.Callbacks,
+		Callbacks:           data.Callbacks.ToCallbacksModel(),
 	}, nil
 }
 
@@ -104,7 +103,7 @@ func FromBacktestModel(bt backtest.Backtest) (Backtest, error) {
 		Balances:          FromAccountModels(bt.Accounts),
 		Orders:            FromOrderModels(bt.Orders),
 		TickSubscriptions: FromTickSubscriptionModels(bt.PricesSubscriptions),
-		Callbacks:         bt.Callbacks,
+		Callbacks:         FromCallbacksModel(bt.Callbacks),
 	}
 
 	// Marshal the backtest data.
