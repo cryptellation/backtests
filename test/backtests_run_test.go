@@ -69,7 +69,7 @@ func (r *testRunner) OnExit(_ workflow.Context, params runtime.OnExitCallbackWor
 func (suite *EndToEndSuite) TestBacktestRun() {
 	// GIVEN a running temporal worker
 
-	tq := "backtest-e2e-" + uuid.New().String()
+	tq := "BacktestE2eRunner-TaskQueue"
 	w := worker.New(suite.temporalclient, tq, worker.Options{})
 	go func() {
 		if err := w.Run(nil); err != nil {
