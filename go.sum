@@ -27,6 +27,8 @@ github.com/cryptellation/ticks v1.2.1 h1:onvm8kmEyBxK5ELWrzUqqCd8+6BT3LhPfBmUP11
 github.com/cryptellation/ticks v1.2.1/go.mod h1:tTMMu1U1e1I1J9Dp73KGh411TWrKcYmB4xORNJNPHtE=
 github.com/cryptellation/timeseries v1.1.0 h1:S5xFLGukQg+k22+L5151Na95+WjhhDKMK0hBkxfJYgo=
 github.com/cryptellation/timeseries v1.1.0/go.mod h1:SxqmKOjn/l5AXZGaLGA47oScXzpTcXtnmfom88uZdaY=
+github.com/cryptellation/timeseries v1.2.0 h1:x90TnFhE3H4zPWEgLLekPMG7t611cnFvNU9DnFyCiD0=
+github.com/cryptellation/timeseries v1.2.0/go.mod h1:SxqmKOjn/l5AXZGaLGA47oScXzpTcXtnmfom88uZdaY=
 github.com/cryptellation/version v1.3.2 h1:Qr17eHA25NYxMamZPhIfKv1j+2ZNCh0FeVqHgEcT1ic=
 github.com/cryptellation/version v1.3.2/go.mod h1:tKR3hxz6uB6AhgA0TKM3Qp6JNAgdQ2PcB0GGcsBWQvg=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
