@@ -7,7 +7,7 @@ require (
 	github.com/cryptellation/candlesticks v1.1.0
 	github.com/cryptellation/dbmigrator v1.0.1
 	github.com/cryptellation/health v1.2.0
-	github.com/cryptellation/runtime v1.7.0
+	github.com/cryptellation/runtime v1.8.1
 	github.com/cryptellation/ticks v1.2.1
 	github.com/cryptellation/version v1.4.0
 	github.com/google/uuid v1.6.0
